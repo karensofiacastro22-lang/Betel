@@ -5,13 +5,12 @@ const multer = require('multer');
 const { q, one } = require('../db');
 const { requiereLogin, requierePermiso, wrap, auditar } = require('../auth');
 
-const storage = multer.diskStorage({
-  destination: path.join(__dirname, '..', '..', 'public', 'uploads'),
-  filename: (_req, file, cb) => cb(null, crypto.randomBytes(12).toString('hex') + path.extname(file.originalname).toLowerCase())
-});
+// Las imágenes se guardan en la base de datos (tabla archivos), no en disco:
+// en Vercel el disco es de solo lectura y se borra entre ejecuciones.
+const EXT = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp' };
 const subir = multer({
-  storage, limits: { fileSize: 3 * 1024 * 1024 },
-  fileFilter: (_req, f, cb) => cb(null, ['image/png', 'image/jpeg', 'image/webp'].includes(f.mimetype))
+  storage: multer.memoryStorage(), limits: { fileSize: 3 * 1024 * 1024 },
+  fileFilter: (_req, f, cb) => cb(null, Boolean(EXT[f.mimetype]))
 });
 
 router.use(requiereLogin);
@@ -22,10 +21,12 @@ router.get('/', wrap(async (_req, res) => {
       FROM eventos e ORDER BY e.fecha DESC, e.hora DESC LIMIT 200`));
 }));
 
-router.post('/imagen', requierePermiso('eventos.publicar'), subir.single('imagen'), (req, res) => {
+router.post('/imagen', requierePermiso('eventos.publicar'), subir.single('imagen'), wrap(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Suba una imagen PNG, JPG o WEBP de máximo 3 MB' });
-  res.json({ ruta: '/uploads/' + req.file.filename });
-});
+  const nombre = crypto.randomBytes(12).toString('hex') + EXT[req.file.mimetype];
+  await q('INSERT INTO archivos (nombre, tipo, datos) VALUES (?,?,?)', [nombre, req.file.mimetype, req.file.buffer]);
+  res.json({ ruta: '/uploads/' + nombre });
+}));
 
 const CAMPOS = ['sede_id', 'titulo', 'tipo', 'descripcion', 'fecha', 'hora', 'lugar', 'imagen', 'modalidad',
   'url_transmision', 'requiere_inscripcion', 'estado', 'publicado'];

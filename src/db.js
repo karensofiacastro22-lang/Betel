@@ -22,7 +22,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'betel',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: process.env.VERCEL ? 3 : 10,   // en Vercel cada función abre pocas conexiones (Aiven tiene un límite)
   dateStrings: true,          // las fechas llegan como texto AAAA-MM-DD
   charset: 'utf8mb4'
 });

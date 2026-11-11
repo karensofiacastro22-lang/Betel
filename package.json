@@ -11,7 +11,8 @@
     "dev:api": "node --watch src/server.js",
     "preview": "npm run build && npm start",
     "crear-admin": "node scripts/crear_admin.js",
-    "migrar-qr": "node scripts/migrar_qr.js"
+    "migrar-qr": "node scripts/migrar_qr.js",
+    "migrar-archivos": "node scripts/migrar_archivos.js"
   },
   "license": "UNLICENSED",
   "private": true,

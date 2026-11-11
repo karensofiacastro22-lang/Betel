@@ -93,6 +93,18 @@ El certificado CA del proyecto Aiven está en `certs/aiven-ca.pem` (es público;
 En un hosting (Render, Railway, etc.) configure esas mismas variables de entorno; si no puede usar el archivo,
 pegue el contenido del certificado en `DB_SSL_CA`. Para trabajar con la base local (XAMPP/MySQL) ponga `DB_SSL=false`.
 
+## Publicación en Vercel (desde GitHub)
+El proyecto ya está preparado para Vercel (`vercel.json` + `api/index.js`):
+- La interfaz React (`dist/`) la sirve Vercel directamente.
+- La API Express corre como función serverless y atiende `/api`, `/img` y `/uploads`.
+- Las imágenes de eventos se guardan en la base de datos (tabla `archivos`), porque en Vercel el disco no es permanente.
+  Si su base ya existía, ejecute una vez `npm run migrar-archivos`.
+
+Pasos: en vercel.com → **Add New… → Project** → importe el repositorio de GitHub → en **Environment Variables**
+agregue las variables de `.env` (DB_*, `DB_SSL=true`, `DB_SSL_CA_PATH=certs/aiven-ca.pem`, `JWT_SECRET`,
+`COOKIE_SECURE=true` y `BASE_URL=https://<su-proyecto>.vercel.app`) → **Deploy**.
+Cada `git push` a `main` vuelve a publicar automáticamente.
+
 ## Asistencia con código QR
 - En **Asistencia** elija la eucaristía/reunión y la fecha y pulse **Generar código QR** (o el botón **QR** de cualquier registro reciente).
 - Cada lista (eucaristía + día) tiene su **propio código único**; solo funciona ese día (hora de Colombia). Se puede copiar el enlace, descargar en PNG, imprimir o **regenerar** (Pastor, Admin y Asistencia Pastoral) si se filtró.

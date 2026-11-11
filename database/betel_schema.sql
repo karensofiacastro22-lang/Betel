@@ -305,6 +305,16 @@ CREATE TABLE bitacora (
   KEY ix_bit_fecha (fecha)
 ) ENGINE=InnoDB;
 
+-- ---------------------------------------------------------------------
+-- 12. ARCHIVOS SUBIDOS (imágenes de eventos; se guardan en la base para funcionar en Vercel)
+-- ---------------------------------------------------------------------
+CREATE TABLE archivos (
+  nombre    VARCHAR(40) PRIMARY KEY,        -- ej. 3f9a...c1.webp  (se sirve en /uploads/<nombre>)
+  tipo      VARCHAR(40) NOT NULL,           -- image/png, image/jpeg, image/webp
+  datos     MEDIUMBLOB NOT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 -- =====================================================================
 --  DATOS INICIALES (catálogos y datos tomados de la reunión)
 -- =====================================================================
