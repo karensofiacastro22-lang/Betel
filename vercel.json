@@ -6,7 +6,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.js": {
-      "includeFiles": "{public/img/**,certs/**}",
+      "includeFiles": "{public/img/**,certs/**,node_modules/pdfkit/js/**}",
       "maxDuration": 30
     }
   },

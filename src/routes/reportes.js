@@ -25,7 +25,10 @@ async function entregar(res, formato, nombre, titulo, subtitulo, cols, filas) {
     res.setHeader('Content-Disposition', `attachment; filename="${nombre}.xlsx"`);
     await wb.xlsx.write(res); return res.end();
   }
+  // El documento se crea antes de enviar encabezados: si falla (p. ej. faltan las fuentes en Vercel) el error
+  // llega al manejador como un 500 normal en lugar de dejar la descarga a medias o tumbar la función.
   const doc = new PDFDocument({ size: 'A4', margin: 40, layout: cols.length > 6 ? 'landscape' : 'portrait', bufferPages: true });
+  doc.on('error', (e) => { console.error('Error generando PDF:', e); res.destroy(e); });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${nombre}.pdf"`);
   doc.pipe(res);
