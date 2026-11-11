@@ -285,7 +285,7 @@ function QrAsistencia({ sesionId }) {
         <h3>{d.nombre}</h3>
         <p className="fecha">{fechaTxt(d.fecha)}</p>
         <img src={img} alt="Código QR" width="280" height="280" />
-        <p className="nota">Este código solo funciona el día indicado y solo para esta reunión.<br />Los discípulos lo escanean y escriben su número de identificación.</p>
+        <p className="nota">Este código solo funciona el día indicado y solo para esta reunión.<br />Los discípulos lo escanean y escriben su cédula; quien no esté registrado puede registrarse o marcar que es visitante.</p>
         <p className="url">{d.url}</p>
         {d.es_local && <p className="err">Atención: la dirección dice «localhost», así que los celulares no podrán abrirla. Configure BASE_URL en el archivo .env con la dirección real del sistema.</p>}
       </div>

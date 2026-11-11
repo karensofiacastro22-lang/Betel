@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ override: true, quiet: true });   // el .env del proyecto manda sobre variables heredadas de la terminal
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
@@ -69,7 +69,9 @@ app.use((err, _req, res, _next) => {
   if (err.code === 'ER_ROW_IS_REFERENCED_2') return res.status(409).json({ error: 'No se puede eliminar: tiene registros asociados' });
   if (err.status) return res.status(err.status).json({ error: err.message });
   console.error(err);
-  res.status(500).json({ error: 'Error interno del servidor' });
+  // En desarrollo se devuelve el detalle para poder diagnosticar; en producción (Vercel) no se expone.
+  const detalle = process.env.NODE_ENV === 'production' ? undefined : `${err.code || ''} ${err.message || ''}`.trim();
+  res.status(500).json({ error: 'Error interno del servidor', detalle });
 });
 
 // En Vercel la app se exporta y la ejecuta api/index.js; en el equipo local (npm start / npm run dev) se abre el puerto.

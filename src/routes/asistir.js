@@ -48,7 +48,10 @@ router.post('/:token', wrap(async (req, res) => {
     if (nombre.length < 3) return res.status(400).json({ error: 'Escriba su número de identificación o, si es visitante, su nombre completo.' });
     const ya = await one("SELECT id FROM asistencias WHERE sesion_id=? AND miembro_id IS NULL AND LOWER(visitante_nombre)=LOWER(?)", [s.id, nombre]);
     if (!ya) await q("INSERT INTO asistencias (sesion_id, visitante_nombre, estado, origen) VALUES (?,?, 'visitante', 'qr')", [s.id, nombre]);
-    return res.json({ ok: true, repetido: !!ya, mensaje: `¡Bienvenido(a), ${nombre.split(' ')[0]}! Registramos su visita en ${s.nombre}.` });
+    const primerV = nombre.split(' ')[0];
+    return res.json({ ok: true, repetido: !!ya, mensaje: ya
+      ? `${primerV}, su visita a ${s.nombre} ya estaba registrada.`
+      : `¡Bienvenido(a), ${primerV}! Registramos su visita en ${s.nombre}.` });
   }
 
   // --- Discípulo ---
@@ -66,7 +69,7 @@ router.post('/:token', wrap(async (req, res) => {
     // No está registrado: si todavía no envió sus datos, se le piden (nombres y apellidos)
     const nom = limpiarNombre(nombres), ape = limpiarNombre(apellidos);
     if (!nombres && !apellidos)
-      return res.status(404).json({ registrar: true, error: 'Su número no está registrado. Complete sus datos para registrarse como discípulo.' });
+      return res.status(404).json({ registrar: true, error: 'Su cédula no está registrada. Complete sus datos para registrarse como discípulo, o elija "Solo soy visitante".' });
     if (nom.length < 2 || ape.length < 2)
       return res.status(400).json({ registrar: true, error: 'Escriba sus nombres y apellidos completos.' });
     // Se registra como discípulo activo de la sede de esta reunión. Celular y cumpleaños los completa luego el equipo.

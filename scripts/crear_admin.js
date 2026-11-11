@@ -1,5 +1,5 @@
 // Uso:  npm run crear-admin -- "Nombre" correo@ejemplo.com ContraseñaSegura123
-require('dotenv').config();
+require('dotenv').config({ override: true, quiet: true });   // el .env del proyecto manda sobre variables heredadas de la terminal
 const bcrypt = require('bcryptjs');
 const { q, one, pool } = require('../src/db');
 

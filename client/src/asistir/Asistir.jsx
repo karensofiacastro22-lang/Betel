@@ -1,5 +1,6 @@
 // Página que abre el código QR: la persona escribe su cédula. Si ya está registrada, queda su asistencia;
 // si no, se le piden nombres y apellidos, se registra como discípulo y queda su asistencia.
+// Quien solo está de visita puede elegir "Solo soy visitante" y escribir únicamente su nombre.
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fechaLarga } from '../lib/formato.js';
@@ -24,8 +25,9 @@ export default function Asistir() {
   const { token } = useParams();
   const [reunion, setReunion] = useState('Cargando…');
   const [abierta, setAbierta] = useState(false);
-  const [paso, setPaso] = useState('doc');          // 'doc': solo cédula · 'registro': nombres, apellidos y cédula
-  const [datos, setDatos] = useState({ numero_identificacion: '', nombres: '', apellidos: '' });
+  // 'doc': solo cédula · 'registro': nombres, apellidos y cédula (nuevo discípulo) · 'visitante': solo su nombre
+  const [paso, setPaso] = useState('doc');
+  const [datos, setDatos] = useState({ numero_identificacion: '', nombres: '', apellidos: '', visitante_nombre: '' });
   const [ocupado, setOcupado] = useState(false);
   const [msg, setMsg] = useState({ t: '', c: '' });
   const entrada = useRef(null);
@@ -48,14 +50,27 @@ export default function Asistir() {
 
   useEffect(() => { if (abierta) entrada.current?.focus(); }, [paso, abierta]);
 
-  const volver = () => { setPaso('doc'); setMsg({ t: '', c: '' }); };
+  const ir = (p) => {
+    // al pasar a visitante se aprovecha el nombre que ya haya escrito
+    if (p === 'visitante' && !datos.visitante_nombre)
+      setDatos(d => ({ ...d, visitante_nombre: `${d.nombres} ${d.apellidos}`.trim() }));
+    setPaso(p); setMsg({ t: '', c: '' });
+  };
 
   const enviar = async (e) => {
     e.preventDefault();
-    if (!datos.numero_identificacion.trim()) return setMsg({ t: 'Escriba su número de cédula.', c: 'err' });
+    let cuerpo;
+    if (paso === 'visitante') {
+      if (datos.visitante_nombre.trim().length < 3) return setMsg({ t: 'Escriba su nombre completo.', c: 'err' });
+      cuerpo = { visitante_nombre: datos.visitante_nombre };
+    } else {
+      if (!datos.numero_identificacion.trim()) return setMsg({ t: 'Escriba su número de cédula.', c: 'err' });
+      cuerpo = paso === 'doc'
+        ? { numero_identificacion: datos.numero_identificacion }
+        : { numero_identificacion: datos.numero_identificacion, nombres: datos.nombres, apellidos: datos.apellidos };
+    }
     setOcupado(true); setMsg({ t: 'Registrando…', c: '' });
     try {
-      const cuerpo = paso === 'doc' ? { numero_identificacion: datos.numero_identificacion } : datos;
       const r = await llamar(token, 'POST', cuerpo);
       setMsg({ t: r.mensaje, c: 'ok' }); setAbierta(false);
     } catch (er) {
@@ -74,12 +89,19 @@ export default function Asistir() {
 
         {abierta && (
           <form onSubmit={enviar} noValidate>
-            {paso === 'doc' ? (
+            {paso === 'doc' && (
               <label key="d">Número de cédula
                 <input ref={entrada} name="numero_identificacion" inputMode="numeric" autoComplete="off" maxLength={30}
                   placeholder="Sin puntos ni espacios" value={datos.numero_identificacion} onChange={campo('numero_identificacion')} />
               </label>
-            ) : (
+            )}
+            {paso === 'visitante' && (
+              <label key="v">Su nombre completo
+                <input ref={entrada} name="visitante_nombre" autoComplete="name" maxLength={150}
+                  placeholder="Nombre y apellido" value={datos.visitante_nombre} onChange={campo('visitante_nombre')} />
+              </label>
+            )}
+            {paso === 'registro' && (
               <>
                 <label key="n">Nombres
                   <input ref={entrada} name="nombres" autoComplete="given-name" maxLength={100} required
@@ -96,9 +118,10 @@ export default function Asistir() {
               </>
             )}
             <button className="btn" type="submit" disabled={ocupado}>
-              {paso === 'doc' ? 'Registrar mi asistencia' : 'Registrarme y marcar asistencia'}
+              {{ doc: 'Registrar mi asistencia', registro: 'Registrarme como discípulo', visitante: 'Registrar mi visita' }[paso]}
             </button>
-            {paso === 'registro' && <button className="enlace" type="button" onClick={volver}>Ya estoy registrado(a): volver</button>}
+            {paso !== 'visitante' && <button className="enlace" type="button" onClick={() => ir('visitante')}>Solo soy visitante (solo mi nombre)</button>}
+            {paso !== 'doc' && <button className="enlace" type="button" onClick={() => ir('doc')}>Ya estoy registrado(a): ingresar con mi cédula</button>}
           </form>
         )}
 

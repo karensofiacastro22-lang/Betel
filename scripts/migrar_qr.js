@@ -1,6 +1,6 @@
 // Actualiza una base de datos BETEL YA EXISTENTE para soportar los códigos QR de asistencia.
 // Es seguro ejecutarlo varias veces:  npm run migrar-qr
-require('dotenv').config();
+require('dotenv').config({ override: true, quiet: true });   // el .env del proyecto manda sobre variables heredadas de la terminal
 const { pool } = require('../src/db');
 
 async function existeColumna(tabla, columna) {
