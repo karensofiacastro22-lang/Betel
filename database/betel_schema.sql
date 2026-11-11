@@ -56,12 +56,12 @@ CREATE TABLE miembros (
   apellidos                 VARCHAR(100) NOT NULL,
   tipo_identificacion       ENUM('CC','TI','CE','PAS','RC','PPT','OTRO') NOT NULL DEFAULT 'CC',
   numero_identificacion     VARCHAR(30)  NOT NULL,
-  celular                   VARCHAR(25)  NOT NULL,
+  celular                   VARCHAR(25)  NULL,             -- NULL si se registró solo por QR (el equipo lo completa)
   correo                    VARCHAR(120),
   direccion                 VARCHAR(200),
   grupo_sanguineo           ENUM('A+','A-','B+','B-','AB+','AB-','O+','O-'),
   eps                       VARCHAR(80),
-  fecha_nacimiento          DATE NOT NULL,                 -- fecha de cumpleaños
+  fecha_nacimiento          DATE NULL,                     -- fecha de cumpleaños (NULL si se registró solo por QR)
   nivel_jerarquia_id        INT NULL,                      -- función en la iglesia (si tiene cargo)
   funcion_iglesia           VARCHAR(100),                  -- función libre (ej. Multimedia, Alabanza)
   sede_id                   INT NOT NULL,

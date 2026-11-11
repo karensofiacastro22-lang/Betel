@@ -1,4 +1,5 @@
-// Página que abre el código QR: el discípulo escribe su identificación (o el visitante su nombre)
+// Página que abre el código QR: la persona escribe su cédula. Si ya está registrada, queda su asistencia;
+// si no, se le piden nombres y apellidos, se registra como discípulo y queda su asistencia.
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fechaLarga } from '../lib/formato.js';
@@ -10,7 +11,11 @@ async function llamar(token, metodo, cuerpo) {
     method: metodo, headers: cuerpo ? { 'Content-Type': 'application/json' } : {}, body: cuerpo ? JSON.stringify(cuerpo) : undefined
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'No se pudo completar el registro. Intente de nuevo.');
+  if (!r.ok) {
+    const e = new Error(j.error || 'No se pudo completar el registro. Intente de nuevo.');
+    e.registrar = Boolean(j.registrar);    // el número no está registrado: hay que pedir sus datos
+    throw e;
+  }
   return j;
 }
 
@@ -19,10 +24,12 @@ export default function Asistir() {
   const { token } = useParams();
   const [reunion, setReunion] = useState('Cargando…');
   const [abierta, setAbierta] = useState(false);
-  const [visitante, setVisitante] = useState(false);
+  const [paso, setPaso] = useState('doc');          // 'doc': solo cédula · 'registro': nombres, apellidos y cédula
+  const [datos, setDatos] = useState({ numero_identificacion: '', nombres: '', apellidos: '' });
   const [ocupado, setOcupado] = useState(false);
   const [msg, setMsg] = useState({ t: '', c: '' });
   const entrada = useRef(null);
+  const campo = (k) => (e) => setDatos(d => ({ ...d, [k]: e.target.value }));
 
   useEffect(() => {
     // evita que los buscadores indexen esta página
@@ -39,18 +46,22 @@ export default function Asistir() {
     }).catch(e => { setReunion(''); setMsg({ t: e.message, c: 'err' }); });
   }, [token]);
 
-  useEffect(() => { if (abierta) entrada.current?.focus(); }, [visitante, abierta]);
+  useEffect(() => { if (abierta) entrada.current?.focus(); }, [paso, abierta]);
 
-  const cambiar = (v) => { setVisitante(v); setMsg({ t: '', c: '' }); };
+  const volver = () => { setPaso('doc'); setMsg({ t: '', c: '' }); };
 
   const enviar = async (e) => {
     e.preventDefault();
-    const valor = entrada.current.value;
+    if (!datos.numero_identificacion.trim()) return setMsg({ t: 'Escriba su número de cédula.', c: 'err' });
     setOcupado(true); setMsg({ t: 'Registrando…', c: '' });
     try {
-      const r = await llamar(token, 'POST', visitante ? { visitante_nombre: valor } : { numero_identificacion: valor });
+      const cuerpo = paso === 'doc' ? { numero_identificacion: datos.numero_identificacion } : datos;
+      const r = await llamar(token, 'POST', cuerpo);
       setMsg({ t: r.mensaje, c: 'ok' }); setAbierta(false);
-    } catch (er) { setMsg({ t: er.message, c: 'err' }); }
+    } catch (er) {
+      if (er.registrar && paso === 'doc') { setPaso('registro'); setMsg({ t: er.message, c: '' }); }
+      else setMsg({ t: er.message, c: 'err' });
+    }
     finally { setOcupado(false); }
   };
 
@@ -63,17 +74,31 @@ export default function Asistir() {
 
         {abierta && (
           <form onSubmit={enviar} noValidate>
-            {visitante ? (
-              <label key="v">Su nombre completo
-                <input ref={entrada} name="visitante_nombre" autoComplete="name" maxLength={150} placeholder="Nombre y apellido" />
+            {paso === 'doc' ? (
+              <label key="d">Número de cédula
+                <input ref={entrada} name="numero_identificacion" inputMode="numeric" autoComplete="off" maxLength={30}
+                  placeholder="Sin puntos ni espacios" value={datos.numero_identificacion} onChange={campo('numero_identificacion')} />
               </label>
             ) : (
-              <label key="d">Número de identificación
-                <input ref={entrada} name="numero_identificacion" inputMode="numeric" autoComplete="off" placeholder="Sin puntos ni espacios" />
-              </label>
+              <>
+                <label key="n">Nombres
+                  <input ref={entrada} name="nombres" autoComplete="given-name" maxLength={100} required
+                    value={datos.nombres} onChange={campo('nombres')} />
+                </label>
+                <label key="a">Apellidos
+                  <input name="apellidos" autoComplete="family-name" maxLength={100} required
+                    value={datos.apellidos} onChange={campo('apellidos')} />
+                </label>
+                <label key="c">Número de cédula
+                  <input name="numero_identificacion" inputMode="numeric" autoComplete="off" maxLength={30} required
+                    value={datos.numero_identificacion} onChange={campo('numero_identificacion')} />
+                </label>
+              </>
             )}
-            <button className="btn" type="submit" disabled={ocupado}>{visitante ? 'Registrar mi visita' : 'Registrar mi asistencia'}</button>
-            <button className="enlace" type="button" onClick={() => cambiar(!visitante)}>{visitante ? 'Soy discípulo' : 'Soy visitante'}</button>
+            <button className="btn" type="submit" disabled={ocupado}>
+              {paso === 'doc' ? 'Registrar mi asistencia' : 'Registrarme y marcar asistencia'}
+            </button>
+            {paso === 'registro' && <button className="enlace" type="button" onClick={volver}>Ya estoy registrado(a): volver</button>}
           </form>
         )}
 

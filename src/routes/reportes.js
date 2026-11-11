@@ -107,7 +107,7 @@ router.get('/cumpleanos', wrap(async (req, res) => {
   if (!can(req.user, 'reportes.cumpleanos')) return res.status(403).json({ error: 'No tiene permiso' });
   const mes = Math.min(12, Math.max(0, parseInt(req.query.mes) || 0));
   const filas = (await q(`SELECT CONCAT(apellidos,' ',nombres) nombre, fecha_nacimiento, celular, estado FROM miembros
-      WHERE estado='activo' ${mes ? 'AND MONTH(fecha_nacimiento)=?' : ''} ORDER BY MONTH(fecha_nacimiento), DAY(fecha_nacimiento), apellidos`, mes ? [mes] : []))
+      WHERE estado='activo' AND fecha_nacimiento IS NOT NULL ${mes ?'AND MONTH(fecha_nacimiento)=?' : ''} ORDER BY MONTH(fecha_nacimiento), DAY(fecha_nacimiento), apellidos`, mes ? [mes] : []))
     .map(f => { const [y, m, d] = f.fecha_nacimiento.split('-').map(Number); return { ...f, cumple: `${d} de ${MESES[m - 1]}`, edad_actual: new Date().getFullYear() - y }; });
   const puedeTel = can(req.user, 'discipulos.sensibles');
   await auditar(req, 'reporte', 'cumpleanos', null, '');

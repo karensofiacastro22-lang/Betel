@@ -14,6 +14,8 @@ router.use(limitador);
 const TOKEN = /^[a-f0-9]{32}$/;
 const hoyColombia = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 const limpiarDoc = (v) => String(v || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 30);
+// Nombres: solo letras, espacios, apóstrofes y guiones; espacios repetidos se reducen a uno
+const limpiarNombre = (v) => String(v || '').replace(/[^\p{L}\s'-]/gu, '').trim().replace(/\s+/g, ' ').slice(0, 100);
 
 async function cargar(token) {
   if (!TOKEN.test(token || '')) return null;
@@ -38,7 +40,7 @@ router.post('/:token', wrap(async (req, res) => {
   const dia = estadoDia(s);
   if (dia !== 'hoy') return res.status(409).json({ error: dia === 'futuro' ? `Este código es para el ${s.fecha}; todavía no está habilitado.` : `Este código era para el ${s.fecha} y ya no está habilitado.` });
 
-  const { numero_identificacion, visitante_nombre } = req.body || {};
+  const { numero_identificacion, visitante_nombre, nombres, apellidos } = req.body || {};
 
   // --- Visitante (sin registro como discípulo) ---
   if (!numero_identificacion) {
@@ -52,16 +54,35 @@ router.post('/:token', wrap(async (req, res) => {
   // --- Discípulo ---
   const doc = limpiarDoc(numero_identificacion);
   if (doc.length < 4) return res.status(400).json({ error: 'Escriba su número de identificación completo, sin puntos ni espacios.' });
-  // se compara sin puntos, guiones ni espacios, por si el documento se guardó con formato
-  const hallados = await q(`SELECT id, nombres FROM miembros WHERE estado = 'activo'
-      AND REPLACE(REPLACE(REPLACE(numero_identificacion,'.',''),'-',''),' ','') = ? LIMIT 2`, [doc]);
+  // Se busca en todos los discípulos (cualquier estado) comparando sin puntos, guiones ni espacios,
+  // por si el documento se guardó con formato. Así una persona ya registrada nunca se duplica.
+  const hallados = await q(`SELECT id, nombres FROM miembros
+      WHERE REPLACE(REPLACE(REPLACE(numero_identificacion,'.',''),'-',''),' ','') = ? LIMIT 2`, [doc]);
   if (hallados.length > 1) return res.status(409).json({ error: 'Ese número está asociado a más de una persona. Pida a Asistencia Pastoral que registre su asistencia.' });
-  const m = hallados[0];
-  if (!m) return res.status(404).json({ error: 'No encontramos ese número entre los discípulos activos. Revíselo o registre su visita como visitante.' });
+  let m = hallados[0];
+  let nuevo = false;
+
+  if (!m) {
+    // No está registrado: si todavía no envió sus datos, se le piden (nombres y apellidos)
+    const nom = limpiarNombre(nombres), ape = limpiarNombre(apellidos);
+    if (!nombres && !apellidos)
+      return res.status(404).json({ registrar: true, error: 'Su número no está registrado. Complete sus datos para registrarse como discípulo.' });
+    if (nom.length < 2 || ape.length < 2)
+      return res.status(400).json({ registrar: true, error: 'Escriba sus nombres y apellidos completos.' });
+    // Se registra como discípulo activo de la sede de esta reunión. Celular y cumpleaños los completa luego el equipo.
+    const r = await q("INSERT INTO miembros (nombres, apellidos, tipo_identificacion, numero_identificacion, sede_id, estado) VALUES (?,?, 'CC', ?, ?, 'activo')",
+      [nom, ape, doc, s.sede_id]);
+    m = { id: r.insertId, nombres: nom };
+    nuevo = true;
+    await q("INSERT INTO bitacora (usuario_id, accion, entidad, entidad_id, detalle, ip) VALUES (NULL, 'registro_qr', 'miembros', ?, ?, ?)",
+      [m.id, `${nom} ${ape} (CC ${doc}) se registró con el QR de ${s.nombre} ${s.fecha}`, req.ip]);
+  }
 
   if (s.tipo === 'grupo') {
     const g = await one('SELECT 1 AS ok FROM grupo_miembro WHERE grupo_id=? AND miembro_id=? AND fecha_salida IS NULL', [s.grupo_id, m.id]);
-    if (!g) return res.status(403).json({ error: 'Esta lista es de un grupo de comunión del que usted no hace parte.' });
+    if (!g) return res.status(403).json({ error: nuevo
+      ? 'Quedó registrado(a) como discípulo, pero esta lista es de un grupo de comunión: pida a su discipulador que lo agregue al grupo.'
+      : 'Esta lista es de un grupo de comunión del que usted no hace parte.' });
   }
 
   const previo = await one('SELECT id, estado FROM asistencias WHERE sesion_id=? AND miembro_id=?', [s.id, m.id]);
@@ -72,7 +93,9 @@ router.post('/:token', wrap(async (req, res) => {
   if (previo) await q("UPDATE asistencias SET estado='presente', origen='qr' WHERE id=?", [previo.id]);   // estaba marcado ausente y llegó
   else await q("INSERT INTO asistencias (sesion_id, miembro_id, estado, origen) VALUES (?,?, 'presente', 'qr')", [s.id, m.id]);
   await evaluarAlertas(s, [m.id]);
-  res.json({ ok: true, mensaje: `¡Bienvenido(a), ${primer}! Su asistencia a ${s.nombre} quedó registrada.` });
+  res.json({ ok: true, nuevo, mensaje: nuevo
+    ? `¡Bienvenido(a), ${primer}! Quedó registrado(a) como discípulo y su asistencia a ${s.nombre} quedó registrada.`
+    : `¡Bienvenido(a), ${primer}! Su asistencia a ${s.nombre} quedó registrada.` });
 }));
 
 module.exports = router;
