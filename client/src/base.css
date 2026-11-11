@@ -1,0 +1,12 @@
+/* Estilos comunes a las tres áreas (sitio, sistema y registro por QR) */
+:root{
+  --negro:#0f0f10;--carbon:#1b1b1e;--naranja:#f26a1b;--naranja-osc:#d9530a;--rojo:#d7261e;--ambar:#ffa800;
+  --crema:#fff4ec;--fondo:#f6f4f2;--borde:#e5e0db;--texto:#1c1c1f;--gris:#6b6b72;--verde:#1a7f37;
+  --fuente:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--fuente);color:var(--texto)}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit}
+img{max-width:100%;height:auto}
+.carga-inicial{padding:40px;text-align:center;color:var(--gris)}

@@ -1,0 +1,40 @@
+{
+  "name": "betel",
+  "version": "2.0.0",
+  "description": "BETEL - Sistema Integral de Gestión e Información para Iglesias (Misión Cristiana El Calvario)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "build": "vite build",
+    "dev": "node scripts/dev.js",
+    "dev:web": "vite",
+    "dev:api": "node --watch src/server.js",
+    "preview": "npm run build && npm start",
+    "crear-admin": "node scripts/crear_admin.js",
+    "migrar-qr": "node scripts/migrar_qr.js"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.7.5",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^18.0.9",
+    "exceljs": "^4.4.0",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
+    "mysql2": "^3.24.6",
+    "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "vite": "^5.4.11"
+  }
+}
